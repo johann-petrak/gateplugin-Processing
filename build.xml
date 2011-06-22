@@ -1,0 +1,130 @@
+<!-- CHANGE NAME -->
+<project name="InOutProcessing" basedir="." default="all">
+  <description>
+    Processing based on Input sources and Output sinks, 
+    flexible command line interface.
+  </description>
+
+  <property name="plugin.name" value="InOutProcessing"/>
+  <property file="build.properties" />
+  <property environment="env" />
+
+  <condition property="gate.home" value="${env.GATE_HOME}">
+    <isset property="env.GATE_HOME"/>
+  </condition>
+
+  <property name="gate.home" location="../.." />
+  <property name="gate.lib" location="${gate.home}/lib" />
+  <property name="gate.jar" location="${gate.home}/bin/gate.jar" />
+
+  <property name="src.dir" location="src" />
+  <property name="classes.dir" location="classes" />
+  <property name="doc.dir" location="doc" />
+  <property name="javadoc.dir" location="${doc.dir}/javadoc" />
+  <property name="lib.dir" location="lib" />
+  <property name="jar.location" location="${plugin.name}.jar" />
+
+  <path id="compile.classpath">
+    <fileset dir="./lib">
+      <include name="**/*.jar" />
+    </fileset>
+    <pathelement location="${gate.jar}" />
+    <fileset dir="${gate.lib}">
+      <include name="**/*.jar" />
+      <include name="**/*.zip" />
+    </fileset>
+  </path>
+  <path id="run.classpath">
+    <fileset dir="./lib">
+      <include name="**/*.jar" />
+    </fileset>
+    <pathelement location="${gate.jar}" />
+    <fileset dir="${gate.lib}">
+      <include name="**/*.jar" />
+      <include name="**/*.zip" />
+    </fileset>
+    <pathelement location="./GateBatch.jar" />
+  </path> 
+
+  <!--====================== Targets ============================-->
+
+  <!-- create build directory structure -->
+  <target name="prepare">
+    <mkdir dir="${classes.dir}" />
+  </target>
+
+  <!-- compile the source -->
+  <target name="compile" depends="prepare">
+    <javac classpathref="compile.classpath"
+           srcdir="${src.dir}"
+           destdir="${classes.dir}"
+           debug="true"
+           debuglevel="lines,source"
+           source="1.5" />
+  </target>
+
+  <!-- copy resources (anything non-.java) from src to classes -->
+  <target name="copy.resources" depends="prepare">
+    <copy todir="${classes.dir}">
+      <fileset dir="${src.dir}" excludes="**/*.java" />
+    </copy>
+  </target>
+
+  <!-- create the JAR file -->
+  <target name="jar" depends="compile, copy.resources" >
+    <jar destfile="${jar.location}"
+         update="false"
+         basedir="${classes.dir}" />
+  </target>
+
+  <!-- remove the generated .class files -->
+  <target name="clean.classes" >
+    <delete dir="${classes.dir}" />
+  </target>
+
+  <!-- Clean up - remove .class and .jar files -->
+  <target name="clean" depends="clean.classes" >
+    <delete file="${jar.location}" />
+  </target>
+
+  <!-- Build JavaDoc documentation -->
+  <target name="doc.prepare">
+    <mkdir dir="${javadoc.dir}" />
+  </target>
+
+
+  <target name="javadoc" depends="doc.prepare">
+    <javadoc destdir="${javadoc.dir}" packagenames="*"
+             classpathref="compile.classpath"
+             encoding="UTF-8"
+             windowtitle="${plugin.name} JavaDoc"
+             source="1.5">
+      <sourcepath>
+        <pathelement location="${src.dir}" />
+      </sourcepath>
+      <link href="http://java.sun.com/j2se/1.5.0/docs/api/" />
+      <link href="http://gate.ac.uk/gate/doc/javadoc/" />
+    </javadoc>
+  </target>
+
+  <target name="run" depends="jar">
+    <java classname="at.ofai.gate.GateBatch"
+          classpathref="run.classpath">
+     <arg line="${args}"/>
+    </java>
+  </target>
+  
+  <target name="help">
+    <echo level="info">
+       Possible targets: compile, jar, clean, javadoc, run -Dargs="-d ..."
+    </echo>
+  </target>
+
+
+
+  <!-- Build everything - the code and JavaDoc -->
+  <target name="all" depends="jar, javadoc" />
+
+</project>
+
+

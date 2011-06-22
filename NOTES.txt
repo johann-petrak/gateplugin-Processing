@@ -1,0 +1,131 @@
+!! Rename to just "Processing"
+- include the JettyServer LR
+
+
+For JDBC and Dir In and InOut: get document names to read
+from a separate file or stdin instead of the dir list itself.
+(maybe not stdin -- just add an optional parameter called doc-ids or so)
+
+LRs:
+
+DirectoryIn
+DirectoryOut
+DirectoryUpdate
+JDBCIn
+JDBCOut
+JDBCUpdate
+CorpusIn
+CorpusOut
+CorpusUpdate
+
+All inherit from InSource or OutSink or InOut
+
+InSource implements ClosableIterator<Document>, and adds open() 
+as well as current... to get additional data for the document that 
+was last returned by next()
+Also get.. methods to return information about the source itself,
+e.g. if it is sorted, if it is exhaustable, if it is repeatable etc.
+
+All parametrization is done via init/runtime parms of the implementing LR
+
+OutSink has 
+  set... methods to set additional data
+  add(Document) to actually write the document (and all the data that was set)
+  open()
+  close()
+All parametrization is done via init/runtime parms of the implementing LR
+
+UpdateStore has
+  open(), close(), next(), current... for accessing additional data
+  (name,mimetype,encoding) but nothing to change those!
+  update() without param to write back the updated document
+
+PRs:
+
+ProcessInOut: allows In and Out
+  Checks and prevents In and Out from being the same underlying store
+  Allows to specify an additional Out for documents where the processing failed
+  Allows to ignore failed processing
+ProcessUpdate: allows a single Update LR
+
+
+CLI:
+  CommandLineProcessor: analyses args and runs ProcessInOut or ProcessUpdate
+  internally on the apropriate LRs
+
+Hadoop Map Reduce:
+  http://hadoop.apache.org/mapreduce/docs/r0.21.0/mapred_tutorial.html
+
+DocSrc
+  DocSrcJDBC
+    - jdbc driver
+    - jdbc url
+    - encoding: empty, columnumber (3) or string(utf-8)
+    - mime type: empty, columnnumber (4) or string(text/html)
+    - select id,content,enc from .... 
+    - is compressed
+  DocSrcFileDir
+    - directory URL
+    - exclude hidden files true/false
+    - recurse directories
+    - match regexp
+    - limit: empty (all) or n>=1
+    - encoding
+    - mimetype
+    - compressed: yes/no/auto
+    - includeextension true/false
+  DocSrcCorpus
+    - corpusLR
+    - match regexp
+    - limit: empty (all) ir n>=1
+DocSink
+  DocSinkJDBC
+    - jdbc driver
+    - jdbc url
+    - name field
+    - content field
+    - update mode: update/insert/auto
+    - compress
+  DocSinkFileDir
+    - directory URL
+    - overwrite true/false
+    - add xml extension
+    - compress (and add .gz extension)
+  DocSinkCorpus
+    - corpusLR
+    - overwrite existing: true/false
+  DocSinkDevNull
+SrcSinkPipelineProcessor (processing resource)
+  - DocSrc
+  - DocSink
+  - CorpusPipeline
+  - Number Threads
+  - Filter on Annset.Type.Feature  cond value (if annset.type is empty, 
+    use document feature)
+
+Document-Document Transformations: might be done in a generic way with
+a PR that takes a document and replaces it by a document with different
+content. That PR could then be included in the normal corpus pipeline.
+Or, we have a SrcSinkTransformerProcesser which takes just a PR that
+can take an input document and produces a single output document or
+a list of output documents .. that way we can do 1 to N processing.
+Since the list can be empty it can also act as a filter.
+
+TODO: think about how to handle parallel documents?
+
+Notes: the Sink.add(doc,name) method MUST be serialized 
+
+Special processing is needed if the both source and sink are Corpus adapters
+for corpus LRs that have a datastore:
+  - a document from ds a cannot be stored into ds b
+  - so in that case we always create a copy of the original and add it
+  - but what if a document with that name already exists in the targe corpus?
+    can we easily overwrite it?
+
+Interface for DocSrc: 
+  extends closable iterator? 
+Interface for DocSink
+  add(document)
+
+Implementation Notes:
+  use commons cli for the options! http://commons.apache.org/cli/

@@ -1,0 +1,4 @@
+<CREOLE-DIRECTORY>
+    <JAR scan="True">InOutProcessing.jar</JAR>
+    <JAR>lib/commons-io-1.4.jar</JAR>
+</CREOLE-DIRECTORY>
